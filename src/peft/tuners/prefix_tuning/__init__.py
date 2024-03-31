@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .config import PrefixTuningConfig
+from .config import PrefixTuningConfig, PrefixTuningInit
 from .model import PrefixEncoder
 
 
-__all__ = ["PrefixTuningConfig", "PrefixEncoder"]
+__all__ = ["PrefixTuningConfig", "PrefixEncoder", "PrefixTuningInit"]

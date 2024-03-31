@@ -15,6 +15,10 @@
 # Based on https://github.com/THUDM/P-tuning-v2/blob/main/model/prefix_encoder.py
 # with some refactor
 import torch
+from transformers import AutoTokenizer
+import math
+import torch
+from .config import PrefixTuningInit
 
 
 class PrefixEncoder(torch.nn.Module):
@@ -53,13 +57,14 @@ class PrefixEncoder(torch.nn.Module):
     Output shape: (`batch_size`, `num_virtual_tokens`, `2*layers*hidden`)
     """
 
-    def __init__(self, config):
+    def __init__(self, config, word_embeddings):
         super().__init__()
         self.prefix_projection = config.prefix_projection
         token_dim = config.token_dim
         num_layers = config.num_layers
         encoder_hidden_size = config.encoder_hidden_size
-        num_virtual_tokens = config.num_virtual_tokens
+        num_virtual_tokens = config.num_virtual_tokens   
+
         if self.prefix_projection and not config.inference_mode:
             # Use a two-layer MLP to encode the prefix
             self.embedding = torch.nn.Embedding(num_virtual_tokens, token_dim)
@@ -70,7 +75,31 @@ class PrefixEncoder(torch.nn.Module):
             )
         else:
             self.embedding = torch.nn.Embedding(num_virtual_tokens, num_layers * 2 * token_dim)
-
+        
+        
+        if config.prefix_tuning_init == PrefixTuningInit.TEXT and not config.inference_mode:
+            tokenizer_kwargs = config.tokenizer_kwargs or {}
+            tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name_or_path, **tokenizer_kwargs)
+            init_text = config.prefix_tuning_init_text
+            init_token_ids = tokenizer(init_text)["input_ids"]
+            
+            num_text_tokens = len(init_token_ids)
+            if num_text_tokens > num_virtual_tokens:
+                init_token_ids = init_token_ids[:num_virtual_tokens]
+            elif num_text_tokens < num_virtual_tokens:
+                num_reps = math.ceil(num_virtual_tokens / num_text_tokens)
+                init_token_ids = init_token_ids * num_reps
+            init_token_ids = init_token_ids[:num_virtual_tokens]
+            init_token_ids = torch.LongTensor(init_token_ids).to(word_embeddings.weight.device)
+            
+            word_embedding_weights = word_embeddings(init_token_ids).detach().clone()
+            word_embedding_weights = word_embedding_weights.to(torch.float32)
+            if self.prefix_projection:
+                self.embedding.weight = torch.nn.Parameter(word_embedding_weights)   
+            else:
+                pass  
+        
+        
     def forward(self, prefix: torch.Tensor):
         if self.prefix_projection:
             prefix_tokens = self.embedding(prefix)
@@ -78,3 +107,10 @@ class PrefixEncoder(torch.nn.Module):
         else:
             past_key_values = self.embedding(prefix)
         return past_key_values
+
+
+          
+
+
+
+    

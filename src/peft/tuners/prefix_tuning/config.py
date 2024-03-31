@@ -17,6 +17,15 @@ from dataclasses import dataclass, field
 from peft.config import PromptLearningConfig
 from peft.utils import PeftType
 
+import enum
+from typing import Optional, Union
+
+
+import enum       
+class PrefixTuningInit(str, enum.Enum):
+    TEXT = "TEXT"
+    RANDOM = "RANDOM"
+     
 
 @dataclass
 class PrefixTuningConfig(PromptLearningConfig):
@@ -26,6 +35,9 @@ class PrefixTuningConfig(PromptLearningConfig):
     Args:
         encoder_hidden_size (`int`): The hidden size of the prompt encoder.
         prefix_projection (`bool`): Whether to project the prefix embeddings.
+        
+        prefix_tuning_init (Union[[`PrefixTuningInit`], `str`]): The initialization of the prompt embedding.
+        prefix_tuning_init_text (`str`, *optional*): The text to initialize the prompt embedding. Only used if `prompt_tuning_init` is `TEXT`.
     """
 
     encoder_hidden_size: int = field(
@@ -36,6 +48,52 @@ class PrefixTuningConfig(PromptLearningConfig):
         default=False,
         metadata={"help": "Whether to project the prefix tokens"},
     )
+    
+    
+    prefix_tuning_init: Union[PrefixTuningInit, str] = field(
+        default=PrefixTuningInit.RANDOM,
+        metadata={"help": "How to initialize the prefix tuning parameters"},
+    )
+    
+    prefix_tuning_init_text: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "The text to use for Prefix tuning initialization. Only used if prefix_tuning_init is `TEXT`"
+        },
+    ) 
+    
+    tokenizer_name_or_path: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "The tokenizer to use for prompt tuning initialization. Only used if prefix_tuning_init is `TEXT`"
+        },
+    )
 
+    tokenizer_kwargs: Optional[dict] = field(
+        default=None,
+        metadata={
+            "help": (
+                "The keyword arguments to pass to `AutoTokenizer.from_pretrained`. Only used if prefix_tuning_init is "
+                "`TEXT`"
+            ),
+        },
+    )
+    
     def __post_init__(self):
         self.peft_type = PeftType.PREFIX_TUNING
+        
+        if self.tokenizer_kwargs and (self.prefix_tuning_init != PrefixTuningInit.TEXT):
+            raise ValueError(
+                f"tokenizer_kwargs only valid when using prefix_tuning_init='{PrefixTuningInit.TEXT.value}'."
+            )
+
+   
+   
+ 
+   
+
+        
+    
+
+    
+        

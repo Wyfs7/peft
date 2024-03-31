@@ -37,11 +37,20 @@ def starcoder_model_postprocess_past_key_value(past_key_values):
         k = k.reshape(*k.shape[:-2], -1)
         result.append(k)
     return tuple(result)
-
+def qwen_model_postprocess_past_key_value(past_key_values):
+    # batch,seq_len,num_heads,head_dim
+    result=[]
+    for k in past_key_values:
+        k=k.permute([0, 1, 3, 2, 4])
+        result.append(k)
+    
+    return tuple(result)
+    
 
 TRANSFORMERS_MODELS_TO_PREFIX_TUNING_POSTPROCESS_MAPPING = {
     "bloom": bloom_model_postprocess_past_key_value,
     "gpt_bigcode": starcoder_model_postprocess_past_key_value,
+    "qwen":qwen_model_postprocess_past_key_value,
 }
 
 

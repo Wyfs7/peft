@@ -133,6 +133,7 @@ def get_peft_model(
 
     if peft_config.is_prompt_learning:
         peft_config = _prepare_prompt_learning_config(peft_config, model_config)
+    # import ipdb; ipdb.set_trace()
     return MODEL_TYPE_TO_PEFT_MODEL_MAPPING[peft_config.task_type](model, peft_config, adapter_name=adapter_name)
 
 
