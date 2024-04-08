@@ -75,7 +75,14 @@ class PromptTuningConfig(PromptLearningConfig):
             ),
         },
     )
-
+    in_prompt_mode: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": (
+                'put the prompt behind question'
+            ),
+        },
+    )
     def __post_init__(self):
         self.peft_type = PeftType.PROMPT_TUNING
 

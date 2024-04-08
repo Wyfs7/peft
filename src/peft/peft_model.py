@@ -17,6 +17,7 @@ from __future__ import annotations
 import collections
 import inspect
 import os
+from turtle import pos
 import warnings
 from contextlib import contextmanager
 from copy import deepcopy
@@ -349,8 +350,9 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         if config.task_type not in MODEL_TYPE_TO_PEFT_MODEL_MAPPING.keys():
             model = cls(model, config, adapter_name)
         else:
+            # import ipdb; ipdb.set_trace()
             model = MODEL_TYPE_TO_PEFT_MODEL_MAPPING[config.task_type](model, config, adapter_name)
-        # import ipdb; ipdb.set_trace()
+ 
         model.load_adapter(model_id, adapter_name, is_trainable=is_trainable, **kwargs)
         return model
 
@@ -500,8 +502,8 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                 delta_prompt_emb = prompts - prompt_encoder.origin_emb.to(prompts.device)
                 delta_prompt_emb=delta_prompt_emb.clone().detach()
                 delta_prompt_emb*=0.05
-                prompts[0]+=delta_prompt_emb[0]
-                prompts=prompts
+                # prompts[0]+=delta_prompt_emb[0]
+                # prompts=prompts
             return prompts
 
     def get_nb_trainable_parameters(self) -> tuple[int, int]:
@@ -628,6 +630,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                     dict_config = self.config
 
                 peft_config = _prepare_prompt_learning_config(peft_config, dict_config)
+                # import ipdb;ipdb.set_trace()
                 self._setup_prompt_encoder(adapter_name)
             elif peft_config.is_adaption_prompt:
                 self.base_model.add_adapter(adapter_name, peft_config)
@@ -1116,8 +1119,9 @@ class PeftModelForCausalLM(PeftModel):
         batch_size = _get_batch_size(input_ids, inputs_embeds)
         if attention_mask is not None:
             # concat prompt attention mask
-            prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(attention_mask.device)
-            attention_mask = torch.cat((prefix_attention_mask, attention_mask), dim=1)
+            if peft_config.peft_type != PeftType.PROMPT_TUNING or peft_config.in_prompt_mode== False:
+                prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(attention_mask.device)
+                attention_mask = torch.cat((prefix_attention_mask, attention_mask), dim=1)
 
         if kwargs.get("position_ids", None) is not None:
             warnings.warn("Position ids are not supported for parameter efficient tuning. Ignoring position ids.")
@@ -1141,16 +1145,31 @@ class PeftModelForCausalLM(PeftModel):
                 input_ids=input_ids, inputs_embeds=inputs_embeds, past_key_values=past_key_values, **kwargs
             )
         else:
+            # import pdb;pdb.set_trace()
+            # in prompt   input_ids +  soft prompt + labels
+            if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
+                pos_list=[]
+                for i in range(batch_size):
+                    for j in range(len(input_ids[i])):
+                        if input_ids[i][j] == 151643:
+                            pos_list.append(j)
+                            break
+
             if inputs_embeds is None:
                 inputs_embeds = self.word_embeddings(input_ids)
             # concat prompt labels
             if labels is not None:
-                prefix_labels = torch.full((batch_size, peft_config.num_virtual_tokens), -100).to(labels.device)
-                kwargs["labels"] = torch.cat((prefix_labels, labels), dim=1)
+                if peft_config.peft_type != PeftType.PROMPT_TUNING or peft_config.in_prompt_mode== False:
+                    prefix_labels = torch.full((batch_size, peft_config.num_virtual_tokens), -100).to(labels.device)
+                    kwargs["labels"] = torch.cat((prefix_labels, labels), dim=1)
             prompts = self.get_prompt(batch_size=batch_size, task_ids=task_ids)
             prompts = prompts.to(inputs_embeds.dtype)
-
-            inputs_embeds = torch.cat((prompts, inputs_embeds), dim=1)
+      
+            if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
+                for i in range(batch_size):
+                    inputs_embeds[i][pos_list[i]:pos_list[i]+peft_config.num_virtual_tokens]=prompts[i]
+            else:
+                inputs_embeds = torch.cat((prompts, inputs_embeds), dim=1)
             
             return self.base_model(inputs_embeds=inputs_embeds, **kwargs)
 
