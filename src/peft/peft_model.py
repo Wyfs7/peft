@@ -115,6 +115,8 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         self.modules_to_save = None
         self.active_adapter = adapter_name
         self.peft_type = peft_config.peft_type
+        # z coding
+        self._soft_prompt = None
 
         self._is_prompt_learning = peft_config.is_prompt_learning
         if self._is_prompt_learning:
@@ -158,6 +160,15 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             self._peft_config = value
         else:
             self.base_model.peft_config = value
+            
+    # z coding
+    @property
+    def soft_prompt(self):
+        return self._soft_prompt
+    
+    @soft_prompt.setter
+    def soft_prompt(self, prompts):
+        self._soft_prompt = prompts
 
     def save_pretrained(
         self,
@@ -494,6 +505,9 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
                 if peft_config.inference_mode:
                     prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
+                    if peft_config.prompt_tuning_init == "SET_PROMPT" and self.soft_prompt != None:
+                        return self.soft_prompt.repeat(batch_size, 1, 1)
+                    # print(self.soft_prompt)
                 else:
                     prompts = prompt_encoder(prompt_tokens)
                 
@@ -1189,6 +1203,7 @@ class PeftModelForCausalLM(PeftModel):
             return outputs
 
     def prepare_inputs_for_generation(self, *args, task_ids: Optional[torch.Tensor] = None, **kwargs):
+        # import pdb;pdb.set_trace()
         peft_config = self.active_peft_config
         model_kwargs = self.base_model_prepare_inputs_for_generation(*args, **kwargs)
 
@@ -1237,7 +1252,10 @@ class PeftModelForCausalLM(PeftModel):
                     inputs_embeds = self.word_embeddings(model_kwargs["input_ids"])
                     prompts = self.get_prompt(batch_size=model_kwargs["input_ids"].shape[0], task_ids=task_ids)
                     prompts = prompts.to(inputs_embeds.dtype)
-                    model_kwargs["inputs_embeds"] = torch.cat((prompts, inputs_embeds), dim=1)
+                    if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
+                        model_kwargs["inputs_embeds"] = torch.cat((inputs_embeds,prompts), dim=1)
+                    else:
+                        model_kwargs["inputs_embeds"] = torch.cat((prompts, inputs_embeds), dim=1)
                     model_kwargs["input_ids"] = None
 
         # For transformers>=4.38.0 - for some architectures such as Llama, `cache_position` is

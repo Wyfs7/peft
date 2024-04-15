@@ -23,6 +23,8 @@ from peft.utils import PeftType
 class PromptTuningInit(str, enum.Enum):
     TEXT = "TEXT"
     RANDOM = "RANDOM"
+    # z coding
+    SET_PROMPT = "SET_PROMPT"
 
 
 @dataclass
