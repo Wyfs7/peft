@@ -506,7 +506,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                 if peft_config.inference_mode:
                     prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
                     if peft_config.prompt_tuning_init == "SET_PROMPT" and self.soft_prompt != None:
-                        return self.soft_prompt.repeat(batch_size, 1, 1)
+                        return self.soft_prompt.repeat(batch_size, 1, 1).to(prompt_encoder.embedding.weight.device)
                     # print(self.soft_prompt)
                 else:
                     prompts = prompt_encoder(prompt_tokens)
@@ -515,7 +515,9 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                 # if peft_config.rescale_mode:
                 delta_prompt_emb = prompts - prompt_encoder.origin_emb.to(prompts.device)
                 delta_prompt_emb=delta_prompt_emb.clone().detach()
-                delta_prompt_emb*=0.05
+                delta_prompt_emb*=peft_config.reweight_num
+                if peft_config.reweight_mode == True:
+                    prompt+=delta_prompt_emb
                 # prompts[0]+=delta_prompt_emb[0]
                 # prompts=prompts
             return prompts
