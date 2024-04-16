@@ -517,7 +517,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                 delta_prompt_emb=delta_prompt_emb.clone().detach()
                 delta_prompt_emb*=peft_config.reweight_num
                 if peft_config.reweight_mode == True:
-                    prompt+=delta_prompt_emb
+                    prompts+=delta_prompt_emb
                 # prompts[0]+=delta_prompt_emb[0]
                 # prompts=prompts
             return prompts
