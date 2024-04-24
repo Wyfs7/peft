@@ -110,14 +110,14 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             in the base model if using [`PromptLearningConfig`].
     """
 
-    def __init__(self, model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "default") -> None:
+    def __init__(self, model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "default",attentionermanger = None) -> None:
         super().__init__()
         self.modules_to_save = None
         self.active_adapter = adapter_name
         self.peft_type = peft_config.peft_type
         # z coding
         self._soft_prompt = None
-
+        self.attentionermanger=attentionermanger
         self._is_prompt_learning = peft_config.is_prompt_learning
         if self._is_prompt_learning:
             self._peft_config = {adapter_name: peft_config}
@@ -1218,7 +1218,7 @@ class PeftModelForCausalLM(PeftModel):
         uses_cache = uses_transformers_4_38 or (
             uses_transformers_4_36 and self.base_model.config.model_type in transformers_new_cache_archs
         )
-
+        
         if peft_config.peft_type == PeftType.POLY:
             model_kwargs["task_ids"] = task_ids
         if peft_config.is_prompt_learning:
@@ -1256,6 +1256,13 @@ class PeftModelForCausalLM(PeftModel):
                     prompts = prompts.to(inputs_embeds.dtype)
                     if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
                         model_kwargs["inputs_embeds"] = torch.cat((inputs_embeds,prompts), dim=1)
+                        try:
+                            if self.attentionermanger.intervention_mode == 'base':
+                                self.attentionermanger.pos_b = model_kwargs["input_ids"].shape[1]
+                                self.attentionermanger.register_attentioner_to_model_function()
+                        except Exception as e:
+                            print("干预配置失效")
+                            print(e)
                     else:
                         model_kwargs["inputs_embeds"] = torch.cat((prompts, inputs_embeds), dim=1)
                     model_kwargs["input_ids"] = None
