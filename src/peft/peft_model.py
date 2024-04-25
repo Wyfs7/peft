@@ -513,10 +513,10 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                 
                 # import ipdb; ipdb.set_trace()   
                 # if peft_config.rescale_mode:
-                delta_prompt_emb = prompts - prompt_encoder.origin_emb.to(prompts.device)
-                delta_prompt_emb=delta_prompt_emb.clone().detach()
-                delta_prompt_emb*=peft_config.reweight_num
                 if peft_config.reweight_mode == True:
+                    delta_prompt_emb = prompts - prompt_encoder.origin_emb.to(prompts.device)
+                    delta_prompt_emb=delta_prompt_emb.clone().detach()
+                    delta_prompt_emb*=peft_config.reweight_num
                     prompts+=delta_prompt_emb
                 # prompts[0]+=delta_prompt_emb[0]
                 # prompts=prompts
