@@ -116,6 +116,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         self.active_adapter = adapter_name
         self.peft_type = peft_config.peft_type
         # z coding
+        self.pad_token_id = None
         self._soft_prompt = None
         self.attentionermanger=attentionermanger
         self._is_prompt_learning = peft_config.is_prompt_learning
@@ -1161,13 +1162,13 @@ class PeftModelForCausalLM(PeftModel):
                 input_ids=input_ids, inputs_embeds=inputs_embeds, past_key_values=past_key_values, **kwargs
             )
         else:
-            # import pdb;pdb.set_trace()
+            import pdb;pdb.set_trace()
             # in prompt   input_ids +  soft prompt + labels
             if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
                 pos_list=[]
                 for i in range(batch_size):
                     for j in range(len(input_ids[i])):
-                        if input_ids[i][j] == 151643:
+                        if input_ids[i][j] == self.pad_token_id:
                             pos_list.append(j)
                             break
 
