@@ -1162,7 +1162,7 @@ class PeftModelForCausalLM(PeftModel):
                 input_ids=input_ids, inputs_embeds=inputs_embeds, past_key_values=past_key_values, **kwargs
             )
         else:
-            import pdb;pdb.set_trace()
+            # import pdb;pdb.set_trace()
             # in prompt   input_ids +  soft prompt + labels
             if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
                 pos_list=[]
