@@ -1162,7 +1162,7 @@ class PeftModelForCausalLM(PeftModel):
                 input_ids=input_ids, inputs_embeds=inputs_embeds, past_key_values=past_key_values, **kwargs
             )
         else:
-            # import pdb;pdb.set_trace()
+            #import pdb;pdb.set_trace()
             # in prompt   input_ids +  soft prompt + labels
             if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
                 pos_list=[]
@@ -1181,7 +1181,7 @@ class PeftModelForCausalLM(PeftModel):
                     kwargs["labels"] = torch.cat((prefix_labels, labels), dim=1)
             prompts = self.get_prompt(batch_size=batch_size, task_ids=task_ids)
             prompts = prompts.to(inputs_embeds.dtype)
-      
+#            import pdb;pdb.set_trace()
             if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
                 for i in range(batch_size):
                     inputs_embeds[i][pos_list[i]:pos_list[i]+peft_config.num_virtual_tokens]=prompts[i]
@@ -1197,6 +1197,7 @@ class PeftModelForCausalLM(PeftModel):
         else:
             self.base_model.generation_config = self.generation_config
         try:
+            #import pdb;pdb.set_trace()
             outputs = self.base_model.generate(*args, **kwargs)
         except:
             self.base_model.prepare_inputs_for_generation = self.base_model_prepare_inputs_for_generation
@@ -1246,7 +1247,7 @@ class PeftModelForCausalLM(PeftModel):
                     "Token type ids are not supported for parameter efficient tuning. Ignoring token type ids"
                 )
                 kwargs["token_type_ids"] = None
-
+            #import pdb;pdb.set_trace()
             if model_kwargs["past_key_values"] is None and peft_config.peft_type == PeftType.PREFIX_TUNING:
                 past_key_values = self.get_prompt(batch_size=model_kwargs["input_ids"].shape[0])
                 model_kwargs["past_key_values"] = past_key_values
@@ -1257,14 +1258,16 @@ class PeftModelForCausalLM(PeftModel):
                     prompts = prompts.to(inputs_embeds.dtype)
                     if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
                         model_kwargs["inputs_embeds"] = torch.cat((inputs_embeds,prompts), dim=1)
+                        #bug: input 1+1= 2[prompt]    应当 1+1=[prompt] 2
                         try:
                             if self.attentionermanger.intervention_mode == 'base':
                                 # print("尝试干预")
                                 self.attentionermanger.pos_b = model_kwargs["input_ids"].shape[1]
                                 self.attentionermanger.register_attentioner_to_model_function()
                         except Exception as e:
-                            print("干预配置失效")
-                            print(e)
+                            pass
+                            # print("干预配置失效")
+                            # print(e)
                     else:
                         model_kwargs["inputs_embeds"] = torch.cat((prompts, inputs_embeds), dim=1)
                     model_kwargs["input_ids"] = None
