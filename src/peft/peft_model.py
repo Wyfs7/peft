@@ -1183,12 +1183,15 @@ class PeftModelForCausalLM(PeftModel):
             prompts = prompts.to(inputs_embeds.dtype)
 #            import pdb;pdb.set_trace()
             if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
+                #import pdb;pdb.set_trace()
+                new_inputs_embeds=inputs_embeds.clone()
                 for i in range(batch_size):
-                    inputs_embeds[i][pos_list[i]:pos_list[i]+peft_config.num_virtual_tokens]=prompts[i]
+                    new_inputs_embeds[i]=torch.cat((new_inputs_embeds[i][:pos_list[i]],prompts[i],new_inputs_embeds[i][pos_list[i]+peft_config.num_virtual_tokens:]), dim=0)
+                    # inputs_embeds[i][pos_list[i]:pos_list[i]+peft_config.num_virtual_tokens]=prompts[i]
             else:
-                inputs_embeds = torch.cat((prompts, inputs_embeds), dim=1)
+                new_inputs_embeds = torch.cat((prompts, inputs_embeds), dim=1)
             
-            return self.base_model(inputs_embeds=inputs_embeds, **kwargs)
+            return self.base_model(inputs_embeds=new_inputs_embeds, **kwargs)
 
     def generate(self, *args, **kwargs):
         self.base_model.prepare_inputs_for_generation = self.prepare_inputs_for_generation
