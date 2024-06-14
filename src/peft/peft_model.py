@@ -1288,7 +1288,7 @@ class PeftModelForCausalLM(PeftModel):
                         model_kwargs["inputs_embeds"] = torch.cat((inputs_embeds,prompts), dim=1)
                         #bug: input 1+1= 2[prompt]    应当 1+1=[prompt] 2
                         try:
-                            if self.attentionermanger.intervention_mode == 'base':
+                            if self.attentionermanger.intervention_mode != None:
                                 # print("尝试干预")
                                 self.attentionermanger.pos_b = model_kwargs["input_ids"].shape[1]
                                 self.attentionermanger.register_attentioner_to_model_function()
