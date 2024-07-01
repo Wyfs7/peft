@@ -1092,7 +1092,7 @@ class PeftModelForCausalLM(PeftModel):
     def __init__(self, model: torch.nn.Module, peft_config: PeftConfig, adapter_name: str = "default") -> None:
         super().__init__(model, peft_config, adapter_name)
         self.base_model_prepare_inputs_for_generation = self.base_model.prepare_inputs_for_generation
-
+        self.pos=None
     def forward(
         self,
         input_ids=None,
@@ -1168,16 +1168,8 @@ class PeftModelForCausalLM(PeftModel):
         else:
             #import pdb;pdb.set_trace()
             # in prompt   input_ids +  soft prompt + labels
-            if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== False:
-                pos_list = [0 for _ in range(batch_size)]
-                for i in range(batch_size):
-                    for j in range(len(input_ids[i])):
-                        if j + 1 == len(input_ids[i]):
-                            print("Error!")
-                        if input_ids[i][j] == self.pad_token_id and input_ids[i][j + 1] != self.pad_token_id:
-                            pos_list[i] = j + 1
-                            break
-            elif peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
+         
+            if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
                 pos_list = [0 for _ in range(batch_size)]
                 for i in range(batch_size):
                     for j in range(len(input_ids[i])):
@@ -1220,6 +1212,7 @@ class PeftModelForCausalLM(PeftModel):
             self.base_model.generation_config = self.generation_config
         try:
             #import pdb;pdb.set_trace()
+            self.pos=kwargs['input_ids'].shape[1]
             outputs = self.base_model.generate(*args, **kwargs)
         except:
             self.base_model.prepare_inputs_for_generation = self.base_model_prepare_inputs_for_generation
@@ -1285,13 +1278,18 @@ class PeftModelForCausalLM(PeftModel):
                     prompts = self.get_prompt(batch_size=model_kwargs["input_ids"].shape[0], task_ids=task_ids)
                     prompts = prompts.to(inputs_embeds.dtype)
                     if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
-                        model_kwargs["inputs_embeds"] = torch.cat((inputs_embeds,prompts), dim=1)
+                        try:
+                            model_kwargs["inputs_embeds"] = torch.cat((inputs_embeds[:,:self.pos],prompts,inputs_embeds[:,self.pos:]), dim=1)
+                        except:
+                            model_kwargs["inputs_embeds"] = torch.cat((inputs_embeds,prompts), dim=1)
                         #bug: input 1+1= 2[prompt]    应当 1+1=[prompt] 2
                         try:
                             if self.attentionermanger.intervention_mode != None:
                                 # print("尝试干预")
-                                self.attentionermanger.pos_b = model_kwargs["input_ids"].shape[1]
-                                self.attentionermanger.register_attentioner_to_model_function()
+                                #self.attentionermanger.pos_b = model_kwargs["input_ids"].shape[1]
+                                if  self.attentionermanger.pos_b != self.pos:  
+                                    self.attentionermanger.pos_b = self.pos   
+                                    self.attentionermanger.register_attentioner_to_model_function()
                         except Exception as e:
                             pass
                             # print("干预配置失效")
@@ -1299,6 +1297,25 @@ class PeftModelForCausalLM(PeftModel):
                     else:
                         model_kwargs["inputs_embeds"] = torch.cat((prompts, inputs_embeds), dim=1)
                     model_kwargs["input_ids"] = None
+                # else:
+                #     inputs_embeds = self.word_embeddings(model_kwargs["input_ids"])
+                #     prompts = self.get_prompt(batch_size=model_kwargs["input_ids"].shape[0], task_ids=task_ids)
+                #     prompts = prompts.to(inputs_embeds.dtype)
+                #     if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
+                #         model_kwargs["inputs_embeds"] = torch.cat((inputs_embeds[:,:self.pos],prompts,inputs_embeds[:,self.pos:]), dim=1)
+                #         #bug: input 1+1= 2[prompt]    应当 1+1=[prompt] 2
+                #         # try:
+                #         #     if self.attentionermanger.intervention_mode != None:
+                #         #         # print("尝试干预")
+                #         #         self.attentionermanger.pos_b = model_kwargs["input_ids"].shape[1]
+                #         #         self.attentionermanger.register_attentioner_to_model_function()
+                #         # except Exception as e:
+                #         #     pass
+                #         #     # print("干预配置失效")
+                #         #     # print(e)
+                #     else:
+                #         model_kwargs["inputs_embeds"] = torch.cat((prompts, inputs_embeds), dim=1)
+                #     model_kwargs["input_ids"] = None
 
         # For transformers>=4.38.0 - for some architectures such as Llama, `cache_position` is
         # passed in the forward pass to keep track of the position ids of the cache. We have to
