@@ -1183,8 +1183,8 @@ class PeftModelForCausalLM(PeftModel):
                 inputs_embeds = self.word_embeddings(input_ids)
             # concat prompt labels
             if labels is not None:
-                # if peft_config.peft_type != PeftType.PROMPT_TUNING or peft_config.in_prompt_mode== False:
-                if peft_config.peft_type != PeftType.PROMPT_TUNING:
+                if peft_config.peft_type != PeftType.PROMPT_TUNING or peft_config.in_prompt_mode== False:
+                # if peft_config.peft_type != PeftType.PROMPT_TUNING:
                     prefix_labels = torch.full((batch_size, peft_config.num_virtual_tokens), -100).to(labels.device)
                     kwargs["labels"] = torch.cat((prefix_labels, labels), dim=1)
                 # if peft_config.in_prompt_mode== True:
