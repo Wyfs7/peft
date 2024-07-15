@@ -1212,7 +1212,10 @@ class PeftModelForCausalLM(PeftModel):
             self.base_model.generation_config = self.generation_config
         try:
             #import pdb;pdb.set_trace()
-            self.pos=kwargs['input_ids'].shape[1]
+            try:
+                self.pos=kwargs['input_ids'].shape[1]
+            except:
+                pass
             outputs = self.base_model.generate(*args, **kwargs)
         except:
             self.base_model.prepare_inputs_for_generation = self.base_model_prepare_inputs_for_generation
