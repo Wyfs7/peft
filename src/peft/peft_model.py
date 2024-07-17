@@ -115,6 +115,8 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         self.modules_to_save = None
         self.active_adapter = adapter_name
         self.peft_type = peft_config.peft_type
+        # f coding 
+        self.fix_prompts=None
         # z coding
         self.pad_token_id = None
         self._soft_prompt = None
@@ -1138,7 +1140,7 @@ class PeftModelForCausalLM(PeftModel):
             # concat prompt attention mask
             if peft_config.peft_type != PeftType.PROMPT_TUNING or peft_config.in_prompt_mode== False:
             #if peft_config.peft_type != PeftType.PROMPT_TUNING:
-                prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(attention_mask.device)
+                prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_toknes).to(attention_mask.device)
                 attention_mask = torch.cat((prefix_attention_mask, attention_mask), dim=1)
             # if peft_config.in_prompt_mode == True:
             #     suffix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(attention_mask.device)
@@ -1199,6 +1201,9 @@ class PeftModelForCausalLM(PeftModel):
                 for i in range(batch_size):
                     new_inputs_embeds[i]=torch.cat((new_inputs_embeds[i][:pos_list[i]],prompts[i],new_inputs_embeds[i][pos_list[i]+peft_config.num_virtual_tokens:]), dim=0)
                     # inputs_embeds[i][pos_list[i]:pos_list[i]+peft_config.num_virtual_tokens]=prompts[i]
+            elif peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.fix_sp_mode == True:
+                fix_prompts_batch = self.fix_prompts.repeat(batch_size,1,1)
+                new_inputs_embeds = torch.cat((prompts,fix_prompts_batch,inputs_embeds),dim=1)
             else:
                 new_inputs_embeds = torch.cat((prompts, inputs_embeds), dim=1)
             

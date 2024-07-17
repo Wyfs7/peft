@@ -101,6 +101,16 @@ class PromptTuningConfig(PromptLearningConfig):
             ),
         },
     )
+    fix_sp_mode: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": (
+                'multi soft prompt'
+            ),
+        },
+    )    
+    
+    
     def __post_init__(self):
         self.peft_type = PeftType.PROMPT_TUNING
 
