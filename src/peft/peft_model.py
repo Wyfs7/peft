@@ -1138,10 +1138,14 @@ class PeftModelForCausalLM(PeftModel):
         batch_size = _get_batch_size(input_ids, inputs_embeds)
         if attention_mask is not None:
             # concat prompt attention mask
+            if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.fix_sp_mode == True:
+                prefix_fix_attention_mask = torch.ones(batch_size, self.fix_prompts.shape[0]).to(attention_mask.device)
+                attention_mask = torch.cat((prefix_fix_attention_mask, attention_mask), dim=1)
             if peft_config.peft_type != PeftType.PROMPT_TUNING or peft_config.in_prompt_mode== False:
             #if peft_config.peft_type != PeftType.PROMPT_TUNING:
-                prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_toknes).to(attention_mask.device)
+                prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(attention_mask.device)
                 attention_mask = torch.cat((prefix_attention_mask, attention_mask), dim=1)
+
             # if peft_config.in_prompt_mode == True:
             #     suffix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(attention_mask.device)
             #     attention_mask = torch.cat((attention_mask, suffix_attention_mask), dim=1)
