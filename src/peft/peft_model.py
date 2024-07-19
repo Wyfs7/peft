@@ -24,6 +24,7 @@ from copy import deepcopy
 from typing import Any, Optional, Union
 
 import packaging.version
+from peft.utils import peft_types
 import torch
 import transformers
 from accelerate import dispatch_model, infer_auto_device_map
@@ -708,7 +709,10 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         from .mapping import PEFT_TYPE_TO_CONFIG_MAPPING
 
         hf_hub_download_kwargs, kwargs = self._split_kwargs(kwargs)
-        torch_device = infer_device()
+        if kwargs["device"]!=None:
+            torch_device=kwargs["device"]
+        else:
+            torch_device = infer_device()
 
         if adapter_name not in self.peft_config:
             # load the config
@@ -1306,6 +1310,11 @@ class PeftModelForCausalLM(PeftModel):
                             pass
                             # print("干预配置失效")
                             # print(e)
+                    
+                    elif peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.fix_sp_mode == True:
+                        batch_size=model_kwargs["input_ids"].shape[0]
+                        fix_prompts_batch = self.fix_prompts.repeat(batch_size,1,1)
+                        model_kwargs["inputs_embeds"] = torch.cat((prompts,fix_prompts_batch,inputs_embeds),dim=1)
                     else:
                         model_kwargs["inputs_embeds"] = torch.cat((prompts, inputs_embeds), dim=1)
                         try:
