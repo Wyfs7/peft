@@ -1196,6 +1196,9 @@ class PeftModelForCausalLM(PeftModel):
                 # if peft_config.peft_type != PeftType.PROMPT_TUNING:
                     prefix_labels = torch.full((batch_size, peft_config.num_virtual_tokens), -100).to(labels.device)
                     kwargs["labels"] = torch.cat((prefix_labels, labels), dim=1)
+                if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.fix_sp_mode == True:
+                    prefix_sp_labels = torch.full((batch_size, self.fix_prompts.shape[0]), -100).to(labels.device)
+                    kwargs["labels"] = torch.cat((prefix_sp_labels, kwargs["labels"]), dim=1)
                 # if peft_config.in_prompt_mode== True:
                 #     suffix_labels = torch.full((batch_size, peft_config.num_virtual_tokens), -100).to(labels.device)
                 #     kwargs["labels"] = torch.cat((labels, suffix_labels), dim=1)
