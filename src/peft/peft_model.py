@@ -709,10 +709,8 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         from .mapping import PEFT_TYPE_TO_CONFIG_MAPPING
 
         hf_hub_download_kwargs, kwargs = self._split_kwargs(kwargs)
-        if kwargs["device"]!=None:
-            torch_device=kwargs["device"]
-        else:
-            torch_device = infer_device()
+        
+        torch_device = kwargs.get("device", infer_device())
 
         if adapter_name not in self.peft_config:
             # load the config
