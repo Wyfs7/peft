@@ -1314,7 +1314,7 @@ class PeftModelForCausalLM(PeftModel):
                     
                     elif peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.fix_sp_mode == True:
                         batch_size=model_kwargs["input_ids"].shape[0]
-                        fix_prompts_batch = self.fix_prompts.repeat(batch_size,1,1)
+                        fix_prompts_batch = self.fix_prompts.repeat(batch_size,1,1).to(inputs_embeds.device)
                         model_kwargs["inputs_embeds"] = torch.cat((prompts,fix_prompts_batch,inputs_embeds),dim=1)
                     else:
                         model_kwargs["inputs_embeds"] = torch.cat((prompts, inputs_embeds), dim=1)
