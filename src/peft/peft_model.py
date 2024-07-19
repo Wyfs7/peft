@@ -1174,7 +1174,7 @@ class PeftModelForCausalLM(PeftModel):
                 input_ids=input_ids, inputs_embeds=inputs_embeds, past_key_values=past_key_values, **kwargs
             )
         else:
-            #import pdb;pdb.set_trace()
+            # import pdb;pdb.set_trace()
             # in prompt   input_ids +  soft prompt + labels
          
             if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.in_prompt_mode== True:
@@ -1191,6 +1191,7 @@ class PeftModelForCausalLM(PeftModel):
                 inputs_embeds = self.word_embeddings(input_ids)
             # concat prompt labels
             if labels is not None:
+                import ipdb;ipdb.set_trace()
                 if peft_config.peft_type != PeftType.PROMPT_TUNING or peft_config.in_prompt_mode== False:
                 # if peft_config.peft_type != PeftType.PROMPT_TUNING:
                     prefix_labels = torch.full((batch_size, peft_config.num_virtual_tokens), -100).to(labels.device)
@@ -1208,7 +1209,7 @@ class PeftModelForCausalLM(PeftModel):
                     new_inputs_embeds[i]=torch.cat((new_inputs_embeds[i][:pos_list[i]],prompts[i],new_inputs_embeds[i][pos_list[i]+peft_config.num_virtual_tokens:]), dim=0)
                     # inputs_embeds[i][pos_list[i]:pos_list[i]+peft_config.num_virtual_tokens]=prompts[i]
             elif peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.fix_sp_mode == True:
-                fix_prompts_batch = self.fix_prompts.repeat(batch_size,1,1)
+                fix_prompts_batch = self.fix_prompts.repeat(batch_size,1,1).to(inputs_embeds.device)
                 new_inputs_embeds = torch.cat((prompts,fix_prompts_batch,inputs_embeds),dim=1)
             else:
                 new_inputs_embeds = torch.cat((prompts, inputs_embeds), dim=1)
