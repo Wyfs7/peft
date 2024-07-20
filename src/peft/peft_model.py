@@ -1275,6 +1275,12 @@ class PeftModelForCausalLM(PeftModel):
                     model_kwargs["attention_mask"] = torch.cat(
                         (prefix_attention_mask, model_kwargs["attention_mask"]), dim=1
                     )
+                if peft_config.peft_type == PeftType.PROMPT_TUNING and peft_config.fix_sp_mode == True:
+                    size = model_kwargs["input_ids"].shape[0], self.fix_prompts.shape[0]
+                    fix_sp_attention_mask = torch.ones(size).to(model_kwargs["input_ids"].device)
+                    model_kwargs["attention_mask"] = torch.cat(
+                        (fix_sp_attention_mask, model_kwargs["attention_mask"]), dim=1
+                    )                    
 
             if model_kwargs.get("position_ids", None) is not None:
                 warnings.warn("Position ids are not supported for parameter efficient tuning. Ignoring position ids.")
